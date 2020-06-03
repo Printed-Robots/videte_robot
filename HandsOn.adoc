@@ -1,0 +1,27 @@
+# Hands on Experience
+
+## Testing Passive Videte Wheel
+
+### New tire Material TPU
+
+- Different floors work fine
+- Ablation of TPU seems minimal
+- Friction of the tire is sufficient
+    * motor can't let the wheel slip
+    * feels well connected
+- Deformation of the tire is maybe to small
+    * more deformation of the wheels surface could increase stability
+    * print surface is too small
+
+### Videte Wheel Concept
+
+- Grab the wheel
+    * Balances inside the wheel
+    * Videte wheel is stable and reliable
+- Small "stairs" work ok'ish
+    * the passive videte wheel starts to oscillate for a short period
+    * is able to regain stability
+    * the motor / motor controller is not strong and fast enough for satisfactory tests
+    * additionally there are wheel encoders missing
+    ** they could enhance the balance control loop
+    ** and would allow to stand on a slope
