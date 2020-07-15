@@ -1,15 +1,18 @@
-import control
+#!/usr/bin/env python
 import numpy as np
 from numpy import linalg as LA
+import control
 
 B = np.array([0, 1])
 B = B.reshape(-1, 1)
 
-Ac = np.array([[1, 1], [-1, 0]])
+Ac = np.array([[1, 1], [0, 2]])
 
-Anc = np.array([[1, 0], [0, 1]])
+Anc = np.array([[1, 0], [0, 2]])
 
 print("controllable: ")
-print(LA.matrix_rank(control.ctrb(Ac, B)))
+Cc = control.ctrb(Ac, B)
+print(LA.matrix_rank(Cc))
 print("not controllable: ")
-print(LA.matrix_rank(control.ctrb(Anc, B)))
+Cnc = control.ctrb(Anc, B)
+print(LA.matrix_rank(Cnc))
