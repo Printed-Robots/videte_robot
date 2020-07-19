@@ -90,25 +90,38 @@ T = W_owr + W_iwr + W_ow + W_iw + W_m - W_heat
 
 L = T - V
 
+θ_dot = sympy.diff(θ, t)
+ρ_dot = sympy.diff(ρ, t)
+ω_iw_dot = sympy.diff(ω_iw, t)
+
 # Equations of Motion
 # eq_x = sympy.diff(sympy.diff(L, sympy.diff(x)), t) - sympy.diff(L, x)
-eq_y = sympy.diff(sympy.diff(L, sympy.diff(y)), t) - sympy.diff(L, y)
-eq_θ = sympy.diff(sympy.diff(L, sympy.diff(θ)), t) - sympy.diff(L, θ)
-eq_ρ = sympy.diff(sympy.diff(L, sympy.diff(ρ)), t) - sympy.diff(L, ρ)
-eq_ω_iw = sympy.diff(sympy.diff(L, sympy.diff(ω_iw)), t) - sympy.diff(L, ω_iw)
+eq_y = sympy.diff(sympy.diff(L, sympy.diff(y, t)), t) - sympy.diff(L, y)
+eq_θ = sympy.diff(sympy.diff(L, sympy.diff(θ, t)), t) - sympy.diff(L, θ)
+eq_ρ = sympy.diff(sympy.diff(L, sympy.diff(ρ, t)), t) - sympy.diff(L, ρ)
+eq_ω_iw = sympy.diff(sympy.diff(L, sympy.diff(ω_iw, t)),
+                     t) - sympy.diff(L, ω_iw)
+eq_θ_dot = sympy.diff(sympy.diff(L, sympy.diff(θ_dot, t)),
+                      t) - sympy.diff(L, θ_dot)
+eq_ρ_dot = sympy.diff(sympy.diff(L, sympy.diff(ρ_dot, t)),
+                      t) - sympy.diff(L, ρ_dot)
+eq_ω_iw_dot = sympy.diff(sympy.diff(
+    L, sympy.diff(ω_iw_dot)), t) - sympy.diff(L, ω_iw_dot)
 
+
+# TODO: Fix matrix with θ_dot and ρ_dot
 A = sympy.Matrix([
-    [sympy.diff(eq_y, y), sympy.diff(eq_ω_iw, y),
-     sympy.diff(eq_θ, y), sympy.diff(eq_ω_iw, y)],
-    [sympy.diff(eq_y, θ), sympy.diff(eq_ω_iw, θ),
-     sympy.diff(eq_θ, θ), sympy.diff(eq_ω_iw, θ)],
-    [sympy.diff(eq_y, ρ), sympy.diff(eq_ω_iw, ρ),
-     sympy.diff(eq_θ, ρ), sympy.diff(eq_ω_iw, ρ)],
-    [sympy.diff(eq_y, ω_iw), sympy.diff(eq_ω_iw, ω_iw),
-     sympy.diff(eq_θ, ω_iw), sympy.diff(eq_ω_iw, ω_iw)]
+    [sympy.diff(eq_y, y), sympy.diff(eq_θ, y),
+     sympy.diff(eq_ρ, y), sympy.diff(eq_ω_iw, y)],
+    [sympy.diff(eq_y, θ), sympy.diff(eq_θ, θ),
+     sympy.diff(eq_ρ, θ), sympy.diff(eq_ω_iw, θ)],
+    [sympy.diff(eq_y, ρ), sympy.diff(eq_θ, ρ),
+     sympy.diff(eq_ρ, ρ), sympy.diff(eq_ω_iw, ρ)],
+    [sympy.diff(eq_y, ω_iw), sympy.diff(eq_θ, ω_iw),
+     sympy.diff(eq_ρ, ω_iw), sympy.diff(eq_ω_iw, ω_iw)]
 ])
 
 linearize = [(sympy.sin(ρ), 0), (sympy.cos(ρ), 1), (sympy.sin(θ), 0), (sympy.cos(θ), 1), (ρ.diff(
     t)**2, 0), (θ.diff(t)**2, 0), (ρ.diff(t, t), 0), (θ.diff(t, t), 0), (y.diff(t, t), 0), (ω_iw, 0)]
 
-sympy.simplify(A.subs(linearize))
+A_lin = sympy.simplify(A.subs(linearize))
