@@ -104,18 +104,26 @@ x_0 = sympy.Matrix([0.0, 0.1, 0.1, 0.01, 0.1, 0.1])
 
 dt = 0.01
 
-t = np.arange(0.0, 5, dt)
-result = sympy.zeros(len(x_0), len(t))
+timeline = np.arange(0.0, 5, dt)
+result = sympy.zeros(len(x_0), len(timeline))
+resultA = sympy.zeros(len(x_0), len(timeline))
 
 result[:, 0] = x_0
+resultA[:, 0] = x_0
 
-for i in range(len(t) - 1):
+for i in range(len(timeline) - 1):
+    linearize = [(θ.diff(t, t), resultA[5, i]), (θ.diff(t), resultA[4, i]),
+                 (θ, resultA[3, i]), (x.diff(t, t), 0), (x.diff(t), resultA[2, i]), (x, resultA[1, i]), (y.diff(t, t), 0), (y.diff(t), 0)]
+
     result[:, i + 1] = Jacobian * result[:, i] * dt + result[:, i]
+    resultA[:, i + 1] = A.subs(linearize).subs(constants) * \
+        resultA[:, i] * dt + resultA[:, i]
 
 # X_DOT = Jacobian * X
 
 for row in range(len(x_0)):
-    plt.plot(t, result.row(row).T, label='X (' + str(row) + ')')
+    plt.plot(timeline, result.row(row).T, label='J (' + str(row) + ')')
+    plt.plot(timeline, resultA.row(row).T, label='A (' + str(row) + ')')
 
 plt.axis([-0.01, 5, -0.1, 0.2])
 plt.legend()
