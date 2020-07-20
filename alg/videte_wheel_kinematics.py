@@ -21,7 +21,9 @@ m_ow, m_ow_rot, m_iw, m_iw_rot, m_m = sympy.symbols(
     'm_ow m_owr m_iw m_iwr m_m')
 
 # Dimensions
-l_ow_iw, l_iw_m, r_1, r_2, r_3 = sympy.symbols('l_owiw l_iwm r_1 r_2 r_3')
+l_iw_m, r_1, r_2, r_3 = sympy.symbols('l_iwm r_1 r_2 r_3')
+
+l_ow_iw = r_2 - r_1
 
 # Constants
 g = sympy.symbols('g')
@@ -108,20 +110,78 @@ eq_ρ_dot = sympy.diff(sympy.diff(L, sympy.diff(ρ_dot, t)),
 eq_ω_iw_dot = sympy.diff(sympy.diff(
     L, sympy.diff(ω_iw_dot)), t) - sympy.diff(L, ω_iw_dot)
 
+eqs = [eq_y, eq_θ, eq_θ_dot, eq_ρ, eq_ρ_dot, eq_ω_iw, eq_ω_iw_dot]
+symbols = [y, θ, θ_dot, ρ, ρ_dot, ω_iw, ω_iw_dot]
 
-# TODO: Fix matrix with θ_dot and ρ_dot
-A = sympy.Matrix([
-    [sympy.diff(eq_y, y), sympy.diff(eq_θ, y),
-     sympy.diff(eq_ρ, y), sympy.diff(eq_ω_iw, y)],
-    [sympy.diff(eq_y, θ), sympy.diff(eq_θ, θ),
-     sympy.diff(eq_ρ, θ), sympy.diff(eq_ω_iw, θ)],
-    [sympy.diff(eq_y, ρ), sympy.diff(eq_θ, ρ),
-     sympy.diff(eq_ρ, ρ), sympy.diff(eq_ω_iw, ρ)],
-    [sympy.diff(eq_y, ω_iw), sympy.diff(eq_θ, ω_iw),
-     sympy.diff(eq_ρ, ω_iw), sympy.diff(eq_ω_iw, ω_iw)]
-])
 
-linearize = [(sympy.sin(ρ), 0), (sympy.cos(ρ), 1), (sympy.sin(θ), 0), (sympy.cos(θ), 1), (ρ.diff(
-    t)**2, 0), (θ.diff(t)**2, 0), (ρ.diff(t, t), 0), (θ.diff(t, t), 0), (y.diff(t, t), 0), (ω_iw, 0)]
+def createMatrix(eqs: list, symbols: list) -> sympy.Matrix:
+    A = sympy.zeros(len(eqs), len(eqs))
+    for i, symbol in enumerate(symbols, start=0):
+        for j, eq in enumerate(eqs, start=0):
+            A[i, j] = sympy.diff(eq, symbol)
+    return A
+
+
+A = createMatrix(eqs, symbols)
+
+linearize = [
+    (sympy.sin(ρ), 0),
+    (sympy.cos(ρ), 1),
+    (sympy.sin(θ), 0),
+    (sympy.cos(θ), 1),
+    (θ.diff(t)**2, 0),
+    (ρ.diff(t), 0),
+    (ρ.diff(t)**2, 0),
+    (ρ.diff(t, t), 0),
+    (θ.diff(t), 0),
+    (θ.diff(t, t), 0),
+    (y.diff(t), 0),
+    (y.diff(t, t), 0),
+    (ω_iw, 0)
+]
 
 A_lin = sympy.simplify(A.subs(linearize))
+
+masses = {
+    g: 9.81,
+    m_ow: 1.0,
+    m_ow_rot: 0.5,
+    m_iw: 0.3,
+    m_iw_rot: 0.1,
+    m_m: 2.0
+}
+
+lengths = {
+    l_iw_m: 2.0,
+    r_1: 0.25,
+    r_2: 1.0,
+    r_3: 1.2
+}
+
+dampening = {
+    d_ow: 0.01,
+    d_iw: 0.01,
+    d_m: 0.01,
+    d_owr: 0.01,
+    d_iwr: 0.01
+}
+
+Jacobian = A_lin.subs(masses).subs(lengths).subs(dampening)
+
+x_0 = sympy.Matrix([0.0, 0.1, 0.01, 0.1, 0.001, -1.0, 0.2])
+
+t = np.arange(0.0, 5, 0.01)
+result = sympy.zeros(len(x_0), len(t))
+
+result[:, 0] = x_0
+
+for i in range(len(t) - 1):
+    result[:, i + 1] = Jacobian * result[:, i] * -0.01 + result[:, i]
+
+# X_DOT = Jacobian * X
+
+for row in range(len(x_0)):
+    plt.plot(t, result.row(row).T)
+
+plt.axis([-0.01, 0.1, -0.1, 0.6])
+plt.show()
