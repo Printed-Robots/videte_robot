@@ -60,6 +60,7 @@ L = T - V
 
 x_dot = sympy.diff(x, t)
 θ_dot = sympy.diff(θ, t)
+θ_2dot = sympy.diff(θ, t, t)
 
 # Equations of Motion
 eq_y = sympy.diff(sympy.diff(L, sympy.diff(y, t)), t) - sympy.diff(L, y)
@@ -69,22 +70,53 @@ eq_x_dot = sympy.diff(sympy.diff(L, sympy.diff(x_dot, t)),
 eq_θ = sympy.diff(sympy.diff(L, sympy.diff(θ, t)), t) - sympy.diff(L, θ)
 eq_θ_dot = sympy.diff(sympy.diff(L, sympy.diff(θ_dot, t)),
                       t) - sympy.diff(L, θ_dot)
+eq_θ_2dot = sympy.diff(sympy.diff(L, sympy.diff(θ_2dot, t)),
+                       t) - sympy.diff(L, θ_2dot)
+
+eqs = [eq_y, eq_x, eq_x_dot, eq_θ, eq_θ_dot, eq_θ_2dot]
+symbols = [y, x, x_dot, θ, θ_dot, θ_2dot]
 
 
-A = sympy.Matrix([
-    [sympy.diff(eq_y, y), sympy.diff(eq_x, y), sympy.diff(eq_x_dot, y),
-     sympy.diff(eq_θ, y), sympy.diff(eq_θ_dot, y)],
-    [sympy.diff(eq_y, x), sympy.diff(eq_x, x), sympy.diff(eq_x_dot, x),
-     sympy.diff(eq_θ, x), sympy.diff(eq_θ_dot, x)],
-    [sympy.diff(eq_y, x_dot), sympy.diff(eq_x, x_dot), sympy.diff(eq_x_dot, x_dot),
-     sympy.diff(eq_θ, x_dot), sympy.diff(eq_θ_dot, x_dot)],
-    [sympy.diff(eq_y, θ), sympy.diff(eq_x, θ), sympy.diff(eq_x_dot, θ),
-     sympy.diff(eq_θ, θ), sympy.diff(eq_θ_dot, θ)],
-    [sympy.diff(eq_y, θ_dot), sympy.diff(eq_x, θ_dot), sympy.diff(eq_x_dot, θ_dot),
-     sympy.diff(eq_θ, θ_dot), sympy.diff(eq_θ_dot, θ_dot)]
-])
+def createMatrix(eqs: list, symbols: list) -> sympy.Matrix:
+    A = sympy.zeros(len(eqs), len(eqs))
+    for i, symbol in enumerate(symbols, start=0):
+        for j, eq in enumerate(eqs, start=0):
+            A[i, j] = sympy.diff(eq, symbol)
+    return A
+
+
+A = createMatrix(eqs, symbols)
 
 linearize = [(sympy.sin(θ), 0), (sympy.cos(θ), 1), (θ.diff(t), 0),
              (θ.diff(t)**2, 0), (θ.diff(t, t), 0), (y.diff(t), 0), (y.diff(t, t), 0)]
 
 A_lin = sympy.simplify(A.subs(linearize))
+
+constants = {
+    g: 9.81,
+    l: 1.0,
+    m_m: 2.0
+}
+
+Jacobian = A_lin.subs(constants)
+
+x_0 = sympy.Matrix([0.0, 0.1, 0.1, 0.01, 0.1, 0.1])
+
+dt = 0.01
+
+t = np.arange(0.0, 5, dt)
+result = sympy.zeros(len(x_0), len(t))
+
+result[:, 0] = x_0
+
+for i in range(len(t) - 1):
+    result[:, i + 1] = Jacobian * result[:, i] * dt + result[:, i]
+
+# X_DOT = Jacobian * X
+
+for row in range(len(x_0)):
+    plt.plot(t, result.row(row).T, label='X (' + str(row) + ')')
+
+plt.axis([-0.01, 5, -0.1, 0.2])
+plt.legend()
+plt.show()
