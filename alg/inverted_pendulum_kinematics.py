@@ -46,8 +46,8 @@ V = m_m * g * y_m + m_cart * g * y_cart
 ##################
 
 # Translational kinetic energy
-W_cart = (1/2) * (sympy.diff(x_cart, t)**2 + sympy.diff(y_cart, t)**2)
-W_m = (1/2) * (sympy.diff(x_m, t)**2 + sympy.diff(y_m, t)**2)
+W_cart = (1/2) * m_cart * (sympy.diff(x_cart, t)**2 + sympy.diff(y_cart, t)**2)
+W_m = (1/2) * m_m * (sympy.diff(x_m, t)**2 + sympy.diff(y_m, t)**2)
 
 # Kinetic Energy
 T = W_cart + W_m
@@ -95,12 +95,13 @@ A_lin = sympy.simplify(A.subs(linearize))
 constants = {
     g: 9.81,
     l: 1.0,
-    m_m: 2.0
+    m_m: 2.0,
+    m_cart: 2.0
 }
 
 Jacobian = A_lin.subs(constants)
 
-x_0 = sympy.Matrix([0.0, 0.1, 0.1, 0.01, 0.1, 0.1])
+x_0 = sympy.Matrix([1.0, 0.5, 0.3, -0.02, 2.15, 0])
 
 dt = 0.01
 
@@ -121,10 +122,15 @@ for i in range(len(timeline) - 1):
 
 # X_DOT = Jacobian * X
 
-for row in range(len(x_0)):
-    plt.plot(timeline, result.row(row).T, label='J (' + str(row) + ')')
-    plt.plot(timeline, resultA.row(row).T, label='A (' + str(row) + ')')
+fig, plots = plt.subplots(2)
 
-plt.axis([-0.01, 5, -0.1, 0.2])
-plt.legend()
+for row in range(len(x_0)):
+    plots[0].plot(timeline, result.row(row).T, label='J (' + str(row) + ')')
+    plots[1].plot(timeline, resultA.row(row).T, label='A (' + str(row) + ')')
+
+plots[0].axis([-0.01, 5, -1, 2])
+plots[1].axis([-0.01, 5, -1, 2])
+plots[0].legend()
+plots[1].legend()
+
 plt.show()
