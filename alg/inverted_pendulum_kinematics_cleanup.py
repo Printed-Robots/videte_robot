@@ -1,3 +1,4 @@
+import tqdm
 import math
 import scipy.linalg
 import scipy.signal
@@ -192,51 +193,22 @@ Jacobian = A_lin.subs(masses).subs(lengths).subs(dampening)
 x_0 = sympy.Matrix([1.0, 0.0, 0.15, 0.2, 0.0, -0.1, 0.2, 0.0])
 
 
-dt = 0.1
+dt = 0.01
 
 timeline = np.arange(0.0, 5, dt)
 result = sympy.zeros(len(x_0), len(timeline))
-resultA = sympy.zeros(len(x_0), len(timeline))
 
 result[:, 0] = x_0
-resultA[:, 0] = x_0
-result[:, 1] = x_0
-resultA[:, 1] = x_0
 
 # states = [y, y.diff(t), θ, θ.diff(t), ρ, ρ.diff(t), φ, φ.diff(t)]
 
-for i in range(len(timeline) - 2):
-    pre = i
-    act = i + 1
-    nex = i + 2
-    linearice = [
-        (y.diff(t, t), resultA[1, act] - resultA[1, pre]),
-        (y.diff(t), resultA[1, act]),
-        (θ.diff(t, t), resultA[3, act] - resultA[3, pre]),
-        (θ.diff(t), resultA[3, act]),
-        (θ, resultA[2, act]),
-        (ρ.diff(t, t), resultA[5, act] - resultA[5, pre]),
-        (ρ.diff(t), resultA[5, act]),
-        (ρ, resultA[4, act]),
-        (φ.diff(t, t), resultA[7, act] - resultA[7, pre]),
-        (φ.diff(t), resultA[7, act]),
-        (φ, resultA[6, act])
-    ]
+for i in tqdm.tqdm(range(len(timeline) - 1)):
+    result[:, i + 1] = Jacobian * result[:, i] * dt + result[:, i]
 
-    result[:, nex] = Jacobian * result[:, i] * dt + result[:, i]
-    resultA[:, nex] = A.subs(linearice).subs(masses).subs(lengths).subs(
-        dampening) * resultA[:, act] * dt + resultA[:, act]
+for row in tqdm.tqdm(range(len(x_0))):
+    plt.plot(timeline, result.row(row).T, label='J (' + str(row) + ')')
 
-
-fig, plots = plt.subplots(2)
-
-for row in range(len(x_0)):
-    plots[0].plot(timeline, result.row(row).T, label='J (' + str(row) + ')')
-    plots[1].plot(timeline, resultA.row(row).T, label='A (' + str(row) + ')')
-
-# plots[0].axis([-0.01, 5, -1, 2])
-# plots[1].axis([-0.01, 5, -1, 2])
-plots[0].legend()
-plots[1].legend()
+plt.axis([-0.01, 5, -1, 2])
+plt.legend()
 
 plt.show()
