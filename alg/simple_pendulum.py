@@ -58,8 +58,8 @@ for row in range(len(x_0)):
     plots[0].plot(timeline, result.row(row).T, label='J (' + str(row) + ')')
     plots[1].plot(timeline, resultA.row(row).T, label='A (' + str(row) + ')')
 
-plots[0].axis([-0.01, 5, -1, 2])
-plots[1].axis([-0.01, 5, -1, 2])
+plots[0].axis([-0.01, 5, -0.2, 0.2])
+plots[1].axis([-0.01, 5, -0.2, 0.2])
 plots[0].legend()
 plots[1].legend()
 
