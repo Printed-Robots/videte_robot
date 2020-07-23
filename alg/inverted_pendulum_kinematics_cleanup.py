@@ -175,17 +175,17 @@ def main():
         d_iwr: 1.0
     }
 
-    Jacobian = np.float64(A_lin.subs(masses).subs(lengths).subs(dampening))
+    jacobian = np.float64(A_lin.subs(masses).subs(lengths).subs(dampening))
 
     # Simulation
-    x_0 = np.float64([1.0, 0.0, 3.16, 1.0, 0.14, 0.23, 0.0, 0.1])
+    x_0 = np.float64([1.0, 0.0, 3.16, 1.0, 0.14, 0.23, 0.0, 5.0])
 
     dt = 0.01
 
     timeline = np.arange(0.0, 10.0, dt)
 
     def applyJ(y, t):
-        return Jacobian.dot(y)
+        return jacobian.dot(y)
 
     solution = integrate.odeint(applyJ, x_0, timeline)
 
@@ -224,6 +224,8 @@ def main():
     axs[1].grid()
     plt.xlabel('t')
     # plt.axis([-0.01, 5, -0.75, 1.5])
+    plt.draw()
+
     plt.show()
 
 
