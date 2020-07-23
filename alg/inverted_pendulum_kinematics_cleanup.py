@@ -95,6 +95,8 @@ def main():
     # Kinetic Energy
     T = W_owr + W_iwr + W_ow + W_iw + W_m + W_heat
 
+    # TODO: Centrifugal force seems missing
+
     ###############
     # State Space #
     ###############
