@@ -1,3 +1,4 @@
+import threading
 from vpython import *
 import tqdm
 import math
@@ -225,8 +226,6 @@ def main():
     axs[1].grid()
     plt.xlabel('t')
     # plt.axis([-0.01, 5, -0.75, 1.5])
-    plt.ion()
-    plt.show()
 
     scene = canvas(align='left',
                    width=1830, height=1120,
@@ -242,17 +241,19 @@ def main():
     rod_ow = cylinder(pos=vector(0, -1.0, 0),
                       axis=vector(0, 0, 0.4), radius=r_3.subs(lengths), color=color.gray(0.6))
 
-    while 1:
-        plt.draw()
-        for i in range(len(timeline)):
-            plt.pause(dt)
-            # rate(1 / dt)
-            rod_ow.pos.x = positions[0, i]
-            rod_ow.pos.y = positions[1, i] - 3
-            rod_iw.pos.x = positions[2, i]
-            rod_iw.pos.y = positions[3, i] - 3
-            rod_m.pos.x = positions[4, i]
-            rod_m.pos.y = positions[5, i] - 3
+    def render_task():
+        while 1:
+            for i in range(len(timeline)):
+                rate(1 / dt)
+                rod_ow.pos.x = positions[0, i]
+                rod_ow.pos.y = positions[1, i] - 3
+                rod_iw.pos.x = positions[2, i]
+                rod_iw.pos.y = positions[3, i] - 3
+                rod_m.pos.x = positions[4, i]
+                rod_m.pos.y = positions[5, i] - 3
+
+    render3d = threading.Thread(target=render_task)
+    render3d.start()
 
     plt.show()
 
