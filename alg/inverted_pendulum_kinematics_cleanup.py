@@ -1,3 +1,4 @@
+from vpython import *
 import tqdm
 import math
 import scipy.integrate as integrate
@@ -178,7 +179,7 @@ def main():
     jacobian = np.float64(A_lin.subs(masses).subs(lengths).subs(dampening))
 
     # Simulation
-    x_0 = np.float64([1.0, 0.0, 3.16, 1.0, 0.14, 0.23, 0.0, 5.0])
+    x_0 = np.float64([1.0, 0.0, 3.16, 0.0, 0.14, 0.23, -10.0, 40.0])
 
     dt = 0.01
 
@@ -224,7 +225,34 @@ def main():
     axs[1].grid()
     plt.xlabel('t')
     # plt.axis([-0.01, 5, -0.75, 1.5])
-    plt.draw()
+    plt.ion()
+    plt.show()
+
+    scene = canvas(align='left',
+                   width=1830, height=1120,
+                   center=vector(0, 0, 0), background=color.black)
+
+    floor = box(pos=vector(0, -2.125, 0), length=8,
+                height=0.25, width=4, color=color.gray(0.5))
+
+    rod_m = cylinder(pos=vector(0, -1.0, -0.1),
+                     axis=vector(0, 0, 0.6), radius=0.4, color=color.green)
+    rod_iw = cylinder(pos=vector(0, -1.0, -0.1),
+                      axis=vector(0, 0, 0.6), radius=r_1.subs(lengths), color=color.gray(0.2))
+    rod_ow = cylinder(pos=vector(0, -1.0, 0),
+                      axis=vector(0, 0, 0.4), radius=r_3.subs(lengths), color=color.gray(0.6))
+
+    while 1:
+        plt.draw()
+        for i in range(len(timeline)):
+            plt.pause(dt)
+            # rate(1 / dt)
+            rod_ow.pos.x = positions[0, i]
+            rod_ow.pos.y = positions[1, i] - 3
+            rod_iw.pos.x = positions[2, i]
+            rod_iw.pos.y = positions[3, i] - 3
+            rod_m.pos.x = positions[4, i]
+            rod_m.pos.y = positions[5, i] - 3
 
     plt.show()
 
