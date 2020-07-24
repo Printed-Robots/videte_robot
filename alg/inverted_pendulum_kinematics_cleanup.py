@@ -1,11 +1,15 @@
-import threading
 from vpython import *
-import tqdm
+import control
+import control.matlab
 import math
-import scipy.integrate as integrate
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.linalg as linalg
+import scipy.integrate as integrate
+# import slycot
 import sympy
+import threading
+import tqdm
 
 
 def main():
@@ -95,13 +99,13 @@ def main():
     # Kinetic Energy
     T = W_owr + W_iwr + W_ow + W_iw + W_m + W_heat
 
-    # TODO: Centrifugal force seems missing
+    # TODO: Centrifugal forces seem missing
 
     ###############
     # State Space #
     ###############
 
-    states = [y, y.diff(t), θ, θ.diff(t), ρ, ρ.diff(t), φ, φ.diff(t)]
+    states = [θ, θ.diff(t), ρ, ρ.diff(t), φ, φ.diff(t)]
 
     ############
     # Lagrange #
@@ -125,9 +129,11 @@ def main():
     L_φ = sympy.diff(sympy.diff(L, sympy.diff(φ, t)), t) - sympy.diff(L, φ)
     f_dφ = sympy.solve(L_φ, φ.diff(t, t))[0]
 
-    eqs = [f_y, f_dy, f_θ, f_dθ, f_ρ, f_dρ, f_φ, f_dφ]
+    eqs = [f_θ, f_dθ, f_ρ, f_dρ, f_φ, f_dφ]
 
     def createMatrix(eqs: list, states: list) -> sympy.Matrix:
+        if (len(eqs) != len(states)):
+            print("eqs and states must have the same size")
         A = sympy.zeros(len(eqs), len(eqs))
         for i, eq in enumerate(eqs, start=0):
             for j, state in enumerate(states, start=0):
@@ -142,7 +148,7 @@ def main():
         (sympy.sin(ρ), 0),
         (sympy.cos(ρ), 1),
         (sympy.sin(θ), 0),
-        (sympy.cos(θ), 1),
+        (sympy.cos(θ), -1),
         (ρ.diff(t, t), 0),
         (ρ.diff(t)**2, 0),
         (ρ.diff(t), 0),
@@ -179,17 +185,54 @@ def main():
         d_iwr: 1.0
     }
 
+    # states = [θ, θ.diff(t), ρ, ρ.diff(t), φ, φ.diff(t)]
     jacobian = np.float64(A_lin.subs(masses).subs(lengths).subs(dampening))
 
-    # Simulation
-    x_0 = np.float64([1.0, 0.0, 3.16, 0.0, 0.14, 0.23, -10.0, 40.0])
+    A_j = jacobian
+
+    B = np.float64(sympy.Matrix([0, -1, 0, 0, 0, 1]))
+
+    C = control.ctrb(A_j, B)
+    rank = linalg.matrix_rank(C)
+
+    print("Rank is " + str(rank))
+
+    O = control.obsv(A_j, C)
+
+    Q = np.float64(np.diag([100, 1, 10, 1, 1, 1]))
+
+    R = np.float64(sympy.Matrix([0.001]))
+
+    A_j.shape
+    B.shape
+    Q.shape
+    R.shape
+
+    # K, S, E = control.matlab.lqr(A_j, B, Q, R)
+    # print(K)
+
+    K_up_power = np.float64(
+        [[-356.59311628, -59.31996526, 15.86393468, -3.0958639, -31.6227766, -7.59638717]])
+
+    K_up = np.float64([[-25.4930585, -7.28036658, 0.479218663,
+                        -0.00320213248, -1.0, -0.260718140]])
+    K_down = np.float64(
+        [[-4.70352655, -2.73542732, -0.33546933,  0.00957988,  1., 0.34493408]])
+
+    K = K_up_power
+    print(K)
+
+    K.shape
+
+    # Visualization
+    x_0 = np.float64([math.pi, 0.0, 0.0, 0.0, 0.0, 0.0])
 
     dt = 0.01
 
     timeline = np.arange(0.0, 10.0, dt)
 
     def applyJ(y, t):
-        return jacobian.dot(y)
+        return A_j.dot(y) - (K * B).dot(y)
 
     solution = integrate.odeint(applyJ, x_0, timeline)
 
@@ -198,10 +241,10 @@ def main():
 
     for tp in tqdm.tqdm(range(len(timeline))):
         results = {
-            y: solution[tp, 0],
-            φ: solution[tp, 6],
-            ρ: solution[tp, 4],
-            θ: solution[tp, 2]
+            y: 0,
+            φ: solution[tp, 4],
+            ρ: solution[tp, 2],
+            θ: solution[tp, 0]
         }
         positions[0, tp] = x_ow.subs(lengths).subs(results)
         positions[1, tp] = y_ow.subs(lengths).subs(results)
@@ -248,11 +291,11 @@ def main():
             for i in range(len(timeline)):
                 rate(1 / dt)
                 rod_ow.pos.x = positions[0, i]
-                rod_ow.pos.y = positions[1, i] - 3
+                rod_ow.pos.y = positions[1, i] - 2
                 rod_iw.pos.x = positions[2, i]
-                rod_iw.pos.y = positions[3, i] - 3
+                rod_iw.pos.y = positions[3, i] - 2
                 rod_m.pos.x = positions[4, i]
-                rod_m.pos.y = positions[5, i] - 3
+                rod_m.pos.y = positions[5, i] - 2
 
     render3d = threading.Thread(target=render_task)
     render3d.start()
