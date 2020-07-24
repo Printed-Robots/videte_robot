@@ -48,7 +48,7 @@ def main():
     # Y positions
     y_ow = r_3 + y
     y_iw = y_ow - l_ow_iw * sympy.cos(ρ)
-    y_m = y_iw - l_iw_m * sympy.cos(θ)
+    y_m = y_iw + l_iw_m * sympy.cos(θ)
 
     # Rotation based x movement
     # TODO: Check to be correct
@@ -95,6 +95,7 @@ def main():
     W_d_iwr = sympy.integrate(d_iwr * (1/2) * ω_iw**2, t)
 
     W_heat = W_d_ow + W_d_iw + W_d_m + W_d_owr + W_d_iwr
+    # W_heat = 0
 
     # Kinetic Energy
     T = W_owr + W_iwr + W_ow + W_iw + W_m + W_heat
@@ -148,13 +149,18 @@ def main():
         (sympy.sin(ρ), 0),
         (sympy.cos(ρ), 1),
         (sympy.sin(θ), 0),
-        (sympy.cos(θ), -1),
+        (sympy.cos(θ), 1),
         (ρ.diff(t, t), 0),
         (ρ.diff(t)**2, 0),
         (ρ.diff(t), 0),
-        (θ.diff(t)**2, 0),
+        (ρ, 0),
         (θ.diff(t, t), 0),
+        (θ.diff(t)**2, 0),
         (θ.diff(t), 0),
+        (θ, 0),
+        (φ.diff(t, t), 0),
+        (φ.diff(t), 0),
+        (φ, 0),
         (y.diff(t, t), 0),
         (y.diff(t), 0)
     ]
@@ -167,7 +173,7 @@ def main():
         m_ow_rot: 0.5,
         m_iw: 0.3,
         m_iw_rot: 0.1,
-        m_m: 2.0
+        m_m: 3.0
     }
 
     lengths = {
@@ -190,7 +196,7 @@ def main():
 
     A_j = jacobian
 
-    B = np.float64(sympy.Matrix([0, -1, 0, 0, 0, 1]))
+    B = np.float64(sympy.Matrix([0, -0.1, 0, 0, 0, 1]))
 
     C = control.ctrb(A_j, B)
     rank = linalg.matrix_rank(C)
@@ -201,7 +207,7 @@ def main():
 
     Q = np.float64(np.diag([100, 1, 10, 1, 1, 1]))
 
-    R = np.float64(sympy.Matrix([0.001]))
+    R = np.float64(sympy.Matrix([1]))
 
     A_j.shape
     B.shape
@@ -211,21 +217,16 @@ def main():
     # K, S, E = control.matlab.lqr(A_j, B, Q, R)
     # print(K)
 
-    K_up_power = np.float64(
-        [[-356.59311628, -59.31996526, 15.86393468, -3.0958639, -31.6227766, -7.59638717]])
+    K_save = np.float64([[-3.20688083e+02, -8.08872810e+01, 5.11558526e-01,
+                          6.04673606e-03, -1.00000000e+00, -2.71188213e-01]])
 
-    K_up = np.float64([[-25.4930585, -7.28036658, 0.479218663,
-                        -0.00320213248, -1.0, -0.260718140]])
-    K_down = np.float64(
-        [[-4.70352655, -2.73542732, -0.33546933,  0.00957988,  1., 0.34493408]])
-
-    K = K_up_power
+    K = K_save
     print(K)
 
     K.shape
 
     # Visualization
-    x_0 = np.float64([math.pi, 0.0, 0.0, 0.0, 0.0, 0.0])
+    x_0 = np.float64([0.2, 0.0, 0.0, 0.0, 0.0, 0.0])
 
     dt = 0.01
 
@@ -233,6 +234,7 @@ def main():
 
     def applyJ(y, t):
         return A_j.dot(y) - (K * B).dot(y)
+        # return A_j.dot(y)
 
     solution = integrate.odeint(applyJ, x_0, timeline)
 
