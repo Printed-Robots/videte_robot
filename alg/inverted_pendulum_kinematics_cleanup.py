@@ -264,8 +264,8 @@ def main():
 
         # A_local = A_j_up
         # update_last_y(y)
-        # return A_j.dot(y) - (K * B).dot(y)
-        return A_local.dot(y)
+        return A_j_up.dot(y) - (K * B).dot(y)
+        # return A_local.dot(y)
 
     solution = integrate.odeint(applyJ, x_0, timeline)
 
