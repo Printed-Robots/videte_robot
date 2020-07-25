@@ -43,7 +43,7 @@ def main():
 
     ω = φ.diff(t)
     ω_iw = ω
-    ω_ow = (1/i_gear) * ω_iw
+    ω_ow = φ_ow.diff(t)
 
     # Y positions
     y_ow = r_3 + y
@@ -63,7 +63,7 @@ def main():
     # Potential Energy #
     ####################
 
-    # Potential Energy of Videte Wheel Concept
+    # Potential Energy
     V = (m_m * y_m + m_ow * y_ow + m_iw * y_iw) * g
 
     ##################
@@ -79,9 +79,9 @@ def main():
     W_iwr = (1/2) * J_iw * ω_iw**2
 
     # Translational kinetic energy
-    W_ow = (1/2) * (sympy.diff(x_ow, t)**2 + sympy.diff(y_ow, t)**2)
-    W_iw = (1/2) * (sympy.diff(x_iw, t)**2 + sympy.diff(y_iw, t)**2)
-    W_m = (1/2) * (sympy.diff(x_m, t)**2 + sympy.diff(y_m, t)**2)
+    W_ow = (1/2) * m_ow * (sympy.diff(x_ow, t)**2 + sympy.diff(y_ow, t)**2)
+    W_iw = (1/2) * m_iw * (sympy.diff(x_iw, t)**2 + sympy.diff(y_iw, t)**2)
+    W_m = (1/2) * m_m * (sympy.diff(x_m, t)**2 + sympy.diff(y_m, t)**2)
 
     # Dampening (e.g. heat dissipation)
     d_ow, d_iw, d_m, d_owr, d_iwr = sympy.symbols(
@@ -94,11 +94,11 @@ def main():
     W_d_owr = sympy.integrate(d_owr * (1/2) * ω_ow**2, t)
     W_d_iwr = sympy.integrate(d_iwr * (1/2) * ω_iw**2, t)
 
-    W_heat = W_d_ow + W_d_iw + W_d_m + W_d_owr + W_d_iwr
+    W_heat = W_d_ow + W_d_iw + W_d_m  # + W_d_owr + W_d_iwr
     # W_heat = 0
 
     # Kinetic Energy
-    T = W_owr + W_iwr + W_ow + W_iw + W_m + W_heat
+    T = W_ow + W_iw + W_m  # + W_owr + W_iwr # + W_heat
 
     # TODO: Centrifugal forces seem missing
 
@@ -144,28 +144,33 @@ def main():
     # Create A Matrix
     A = createMatrix(eqs, states)
 
-    # Linearice
-    linearice = [
-        (sympy.sin(ρ), 0),
-        (sympy.cos(ρ), 1),
-        (sympy.sin(θ), 0),
-        (sympy.cos(θ), 1),
-        (ρ.diff(t, t), 0),
-        (ρ.diff(t)**2, 0),
-        (ρ.diff(t), 0),
-        (ρ, 0),
-        (θ.diff(t, t), 0),
-        (θ.diff(t)**2, 0),
-        (θ.diff(t), 0),
-        (θ, 0),
-        (φ.diff(t, t), 0),
-        (φ.diff(t), 0),
-        (φ, 0),
-        (y.diff(t, t), 0),
-        (y.diff(t), 0)
-    ]
+    def lineariceA(A_in, x_lineraice, x_delta):
+        # Linearice
+        linearice = [
+            (sympy.sin(θ), sin(x_lineraice[0])),
+            (sympy.cos(θ), cos(x_lineraice[0])),
+            (sympy.sin(ρ), sin(x_lineraice[2])),
+            (sympy.cos(ρ), cos(x_lineraice[2])),
+            (θ.diff(t, t), x_delta[1]),
+            (θ.diff(t)**2, x_lineraice[1]**2),
+            (θ.diff(t), x_lineraice[1]),
+            (θ, x_lineraice[0]),
+            (ρ.diff(t, t), x_delta[3]),
+            (ρ.diff(t)**2, x_lineraice[3]**2),
+            (ρ.diff(t), x_lineraice[3]),
+            (ρ, x_lineraice[2]),
+            (φ.diff(t, t),  x_delta[5]),
+            (φ.diff(t), x_lineraice[5]),
+            (φ, x_lineraice[4]),
+            (y.diff(t, t), 0),
+            (y.diff(t), 0),
+            (y, 0)
+        ]
 
-    A_lin = sympy.simplify(A.subs(linearice))
+        return sympy.simplify(A_in.subs(linearice))
+
+    A_lin_up = lineariceA(A, [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
+    A_lin_down = lineariceA(A, [math.pi, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
 
     masses = {
         g: 9.81,
@@ -173,7 +178,7 @@ def main():
         m_ow_rot: 0.5,
         m_iw: 0.3,
         m_iw_rot: 0.1,
-        m_m: 3.0
+        m_m: 15.0
     }
 
     lengths = {
@@ -191,25 +196,31 @@ def main():
         d_iwr: 1.0
     }
 
+    def applyConstants(A_):
+        return A_.subs(masses).subs(lengths).subs(dampening)
+
     # states = [θ, θ.diff(t), ρ, ρ.diff(t), φ, φ.diff(t)]
-    jacobian = np.float64(A_lin.subs(masses).subs(lengths).subs(dampening))
+    jacobian_up = np.float64(applyConstants(A_lin_up))
+    jacobian_down = np.float64(applyConstants(A_lin_down))
 
-    A_j = jacobian
+    A_j_up = jacobian_up
+    A_j_down = jacobian_down
 
-    B = np.float64(sympy.Matrix([0, -0.1, 0, 0, 0, 1]))
+    # TODO: Create proper movement matrix (see page 302)
+    B = np.float64(sympy.Matrix([0, -1, 0, 0, 0, 1]))
 
-    C = control.ctrb(A_j, B)
+    C = control.ctrb(A_j_up, B)
     rank = linalg.matrix_rank(C)
 
     print("Rank is " + str(rank))
 
-    O = control.obsv(A_j, C)
+    O = control.obsv(A_j_up, C)
 
-    Q = np.float64(np.diag([100, 1, 10, 1, 1, 1]))
+    Q = np.float64(np.diag([1, 1, 1, 1, 1, 1]))
 
     R = np.float64(sympy.Matrix([1]))
 
-    A_j.shape
+    A_j_up.shape
     B.shape
     Q.shape
     R.shape
@@ -217,8 +228,8 @@ def main():
     # K, S, E = control.matlab.lqr(A_j, B, Q, R)
     # print(K)
 
-    K_save = np.float64([[-3.20688083e+02, -8.08872810e+01, 5.11558526e-01,
-                          6.04673606e-03, -1.00000000e+00, -2.71188213e-01]])
+    K_save = np.float64([[-1.35133831e+04, -5.98789910e+03, 8.32433588e-01,
+                          8.19822691e-03, -2.23606797e+00, -8.34913488e-01]])
 
     K = K_save
     print(K)
@@ -226,27 +237,56 @@ def main():
     K.shape
 
     # Visualization
-    x_0 = np.float64([0.2, 0.0, 0.0, 0.0, 0.0, 0.0])
+    # Initial State
+    x_0 = np.float64([0.1, 0.0, 0.2, 0.0, 0.0, 0.0])
+    # Target State
+    w_r = np.float64([math.pi, 0.0, 0.0, 0.0, 0.0, 0.0])
 
     dt = 0.01
 
-    timeline = np.arange(0.0, 10.0, dt)
+    timeline = np.arange(0., 5., dt)
+
+    def update_last_y(store_y):
+        last_y = store_y
+
+    last_y = x_0
+    update_last_y(x_0)
+
+    A_constant = applyConstants(A)
 
     def applyJ(y, t):
-        return A_j.dot(y) - (K * B).dot(y)
-        # return A_j.dot(y)
+        # A_local = np.float64(lineariceA(A_constant, y, y - last_y))
+        A_local = np.float64(lineariceA(A_constant, y, [0, 0, 0, 0, 0, 0]))
+        # if (y[0] > - math.pi / 4 and y[0] < math.pi / 4):
+        #     A_local = A_j_up
+        # else:
+        #     A_local = A_j_down
+
+        # A_local = A_j_up
+        # update_last_y(y)
+        # return A_j.dot(y) - (K * B).dot(y)
+        return A_local.dot(y)
 
     solution = integrate.odeint(applyJ, x_0, timeline)
 
     # x_ow, y_ow, x_iw, y_iw, x_m, y_m
     positions = sympy.zeros(6, len(timeline))
+    energy = sympy.zeros(3, len(timeline))
 
     for tp in tqdm.tqdm(range(len(timeline))):
         results = {
-            y: 0,
-            φ: solution[tp, 4],
-            ρ: solution[tp, 2],
-            θ: solution[tp, 0]
+            (θ.diff(t, t), 0),
+            (θ.diff(t), solution[tp, 1]),
+            (θ, solution[tp, 0]),
+            (ρ.diff(t, t), 0),
+            (ρ.diff(t), solution[tp, 3]),
+            (ρ, solution[tp, 2]),
+            (φ.diff(t, t), 0),
+            (φ.diff(t), solution[tp, 5]),
+            (φ, solution[tp, 4]),
+            (y.diff(t, t), 0),
+            (y.diff(t), 0),
+            (y, 0)
         }
         positions[0, tp] = x_ow.subs(lengths).subs(results)
         positions[1, tp] = y_ow.subs(lengths).subs(results)
@@ -254,8 +294,14 @@ def main():
         positions[3, tp] = y_iw.subs(lengths).subs(results)
         positions[4, tp] = x_m.subs(lengths).subs(results)
         positions[5, tp] = y_m.subs(lengths).subs(results)
+        energy[0, tp] = T.subs(lengths).subs(
+            masses).subs(dampening).subs(results)
+        energy[1, tp] = V.subs(lengths).subs(
+            masses).subs(dampening).subs(results)
+        energy[2, tp] = L.subs(lengths).subs(
+            masses).subs(dampening).subs(results)
 
-    fig, axs = plt.subplots(2)
+    fig, axs = plt.subplots(3)
 
     for row, state in enumerate(states):
         axs[0].plot(timeline, solution[:, row], label=str(state))
@@ -267,10 +313,17 @@ def main():
     axs[1].plot(timeline, positions[4, :].T, label='x_m')
     axs[1].plot(timeline, positions[5, :].T, label='y_m')
 
+    axs[2].plot(timeline, energy[0, :].T, label='T')
+    axs[2].plot(timeline, energy[1, :].T, label='V')
+    axs[2].plot(timeline, energy[2, :].T, label='L')
+
     axs[0].legend()
     axs[1].legend()
+    axs[2].legend()
     axs[0].grid()
     axs[1].grid()
+    axs[2].grid()
+
     plt.xlabel('t')
     # plt.axis([-0.01, 5, -0.75, 1.5])
 
